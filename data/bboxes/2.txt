@@ -1,7 +1,7 @@
 label_name,bbox_x,bbox_y,bbox_width,bbox_height,image_name,image_width,image_height
-car4,758,471,185,99,scene2.png,1920,1080
 car1,1144,460,182,86,scene2.png,1920,1080
-car5,733,632,103,146,scene2.png,1920,1080
 car2,1135,552,180,89,scene2.png,1920,1080
 car3,1020,648,204,124,scene2.png,1920,1080
+car4,758,471,185,99,scene2.png,1920,1080
+car5,733,632,103,146,scene2.png,1920,1080
 car6,894,867,136,154,scene2.png,1920,1080
