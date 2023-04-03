@@ -1,6 +1,6 @@
 # 3D scene reconstruction from single image using Object-level Segmentation-Reconstruction-Localization
 
-##  Setup ;-
+##  Setup :-
 
 Setup conda environment using our `environment.yml` file:
 
@@ -17,17 +17,19 @@ chmod +x Miniconda3-latest-Linux-x86_64.sh
 bash Miniconda3-latest-Linux-x86_64.sh
 ```
 
+Download pre-compiled blender from : https://www.blender.org/download/release/Blender3.5/blender-3.5.0-linux-x64.tar.xz/
+
 ## Data :-
 
 * Generated using Blender (Pre-compiled version included under blender)
 * Raw scene images under data/raw_images
 * Camera/object poses of $i^\text{th}$ scene under data/poses/i.txt with format :-
-    * x y z r p y : Camera pose
+    * x y z r p y : Camera pose (in m, degrees)
     * n : no of objects
-    * n lines 'x y z r p y' : Object pose
+    * n lines 'x y z r p y' : Object pose (in m, degrees)
 * GT object bounding boxes of $i^\text{th}$ scene under data/bboxes/i.txt with format :-
     * n : no of objects
-    * n lines 'x y w h' : Object bbox with x,y : center coordinate and w,h : width,height
+    * n lines 'x y w h' : Object bbox with x,y : center coordinate and w,h : width,height (in pixels)
  
 ## Pipeline :-
 
