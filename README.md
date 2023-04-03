@@ -22,6 +22,7 @@ Download pre-compiled blender from : https://www.blender.org/download/release/Bl
 ## Data :-
 
 * Generated using Blender (Pre-compiled version included under blender)
+* Annotated bboxes using https://www.makesense.ai/
 * Raw scene images under data/raw_images
 * Camera/object poses of $i^\text{th}$ scene under data/poses/i.txt with format :-
     * x y z r p y : Camera pose (in m, degrees)
