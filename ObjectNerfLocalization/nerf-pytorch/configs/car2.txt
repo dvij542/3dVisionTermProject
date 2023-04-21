@@ -1,6 +1,6 @@
-expname = blender_car3
+expname = blender_car2
 basedir = ./logs
-datadir = ./data/nerf_synthetic/car1
+datadir = ./data/nerf_synthetic/car2
 dataset_type = blender
 
 no_batching = False
