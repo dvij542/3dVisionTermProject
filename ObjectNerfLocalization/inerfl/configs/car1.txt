@@ -17,10 +17,10 @@ batch_size = 512
 lrate = 0.01
 sampling_strategy = random
 
-delta_phi = 10.
+delta_phi = 0.
 delta_theta = 0.
 delta_psi = 0.
-delta_t = 0.3
+delta_t = .5
 
 noise = None
 sigma = 0.01

@@ -169,45 +169,65 @@ def load_blender(data_dir, model_name, obs_img_num, half_res, white_bkgd, *kwarg
     print(start_pose)
     return img_rgb, [H, W, focal], start_pose, obs_img_pose # image of type uint8
 
-def load_car(data_dir, model_name, obs_img_num, half_res, white_bkgd, kwargs, scene_dir='/home/dvij/3d-vision/3dVisionTermProject/data/scenes/scene1_without_shadows.png', bboxes_file='/home/dvij/3d-vision/3dVisionTermProject/data/bboxes/1.txt', bbox_no=5):
+def load_car(data_dir, model_name, obs_img_num, half_res, white_bkgd, kwargs, scene_dir='/home/dvij/3d-vision/3dVisionTermProject/data/scenes/scene1_without_shadows.png', bboxes_file='/home/dvij/3d-vision/3dVisionTermProject/data/bboxes/1.txt', bbox_no=[4,3]):
 
-    with open(os.path.join(data_dir + str(model_name) + "/obs_imgs/", 'transforms.json'), 'r') as fp:
-        meta = json.load(fp)
-    frames = meta['frames']
+    frames = []
+    for i in range(2) :
+        with open(os.path.join(data_dir + str(model_name[i]) + "/obs_imgs/", 'transforms.json'), 'r') as fp:
+            meta = json.load(fp)
+        frames.append(meta['frames'])
     print(scene_dir)
     img_path =  scene_dir
     img_rgba = imageio.imread(img_path)
-    img_rgba = (np.array(img_rgba) / 255.).astype(np.float32) # rgba image of type float32
+    img_rgba_ = (np.array(img_rgba) / 255.).astype(np.float32) # rgba image of type float32
     
     bboxes = pandas.read_csv(bboxes_file)
-    x,y,w,h = bboxes['bbox_x'][4], bboxes['bbox_y'][4], bboxes['bbox_width'][4], bboxes['bbox_height'][4]
-    H_, W_ = img_rgba.shape[:2]
-    img_rgba = img_rgba[y:y+h,x:x+w,:]
-    H, W = img_rgba.shape[:2]
-    imageio.imsave('test.png',img_rgba)
-    print(img_rgba.shape)
-    camera_angle_x = float(meta['camera_angle_x'])
-    focal = .5 * W / np.tan(.5 * camera_angle_x)
-    if white_bkgd:
-        img_rgb = img_rgba[..., :3] * img_rgba[..., -1:] + (1. - img_rgba[..., -1:])
-    else:
-        img_rgb = img_rgba[..., :3]
+    x,y,w,h = bboxes['bbox_x'][4:2:-1].to_list(), bboxes['bbox_y'][4:2:-1].to_list(), bboxes['bbox_width'][4:2:-1].to_list(), bboxes['bbox_height'][4:2:-1].to_list()
+    H_, W_ = img_rgba_.shape[:2]
+    Hs = []
+    Ws = []
+    focals = []
+    start_poses = []
+    obs_img_poses = []
+    img_rgbs = []
+    for i in range(2) :
+        # print(x,y)
+        img_rgba = img_rgba_[y[i]:y[i]+h[i],x[i]:x[i]+w[i],:]
+        print(np.min(img_rgba),np.max(img_rgba))
+        H, W = img_rgba.shape[:2]
+        # imageio.imsave('test.png',img_rgba)
+        # print(img_rgba.shape)
+        camera_angle_x = float(meta['camera_angle_x'])
+        focal = .5 * W / np.tan(.5 * camera_angle_x)
+        Hs.append(H)
+        Ws.append(W)
+        focals.append(focal)
+        if white_bkgd:
+            img_rgb = img_rgba[..., :3] * img_rgba[..., -1:] + (1. - img_rgba[..., -1:])
+        else:
+            img_rgb = img_rgba[..., :3]
 
-    if half_res:
-        H = H // 2
-        W = W // 2
-        focal = focal / 2.
-        img_rgb = cv2.resize(img_rgb, (W, H), interpolation=cv2.INTER_AREA)
+        if half_res:
+            H = H // 2
+            W = W // 2
+            focal = focal / 2.
+            img_rgb = cv2.resize(img_rgb, (W, H), interpolation=cv2.INTER_AREA)
 
-    img_rgb = np.asarray(img_rgb*255, dtype=np.uint8)
-    obs_img_pose = np.array(frames[obs_img_num]['transform_matrix']).astype(np.float32)
-    phi, theta, psi, t = kwargs
-    print(phi, theta, psi, t)
-    start_pose =  trans_t(t) @ rot_phi(phi/180.*np.pi) @ rot_theta(theta/180.*np.pi) @ rot_psi(psi/180.*np.pi)  @ obs_img_pose
-    print(start_pose)
-    return img_rgb, [H, W, focal], start_pose, obs_img_pose, (x,y,w,h), camera_angle_x, H_, W_ # image of type uint8
+        img_rgb = np.asarray(img_rgb*255, dtype=np.uint8)
+        img_rgbs.append(img_rgb)
+        obs_img_pose = np.array(frames[i][obs_img_num[i]]['transform_matrix']).astype(np.float32)
+        obs_img_poses.append(obs_img_pose)
+        phi, theta, psi, t = kwargs
+        t = [0.5,1.]
+        # print(phi, theta, psi, t)
+        start_pose = rot_phi(phi/180.*np.pi) @ rot_theta(theta/180.*np.pi) @ rot_psi(psi/180.*np.pi)  @ obs_img_pose
+        start_pose = trans_t(t[i]) @ np.linalg.inv(start_pose)
+        start_pose = np.linalg.inv(start_pose)
+        start_poses.append(start_pose)
+        # print(start_pose)
+    return img_rgbs, [Hs, Ws, focals], start_poses, obs_img_poses, (x,y,w,h), camera_angle_x, H_, W_ # image of type uint8
 
-def getObjectPose(bbox,opt_pose,camera_angle,W, H) :
+def getObjectPose(bbox,opt_pose,camera_angle,dist,W, H) :
     """
     Inputs :-
         bbox : (x,y,w,h) bounding box
@@ -217,39 +237,45 @@ def getObjectPose(bbox,opt_pose,camera_angle,W, H) :
         H : Height of the scene image
     Returns :-
         world -> object transformation
+        obj_dist : Object distance from local camera pose
     """
-    local_dist = 2.
-    print(camera_angle)
-    object_size = 2.*local_dist*math.tan(camera_angle/2.)
-    print(W,bbox[2])
-    dist = object_size*W/bbox[2]
-    print(dist)
+    # local_dist = 2.
+    # print(camera_angle)
+    # object_size = 2.*local_dist*math.tan(camera_angle/2.)
+    # print(W,bbox[2])
+    # dist = object_size*W/bbox[2]
+    # print(dist)
     x,y,w,h = bbox
-    world_to_cam = np.array([[1.,0.,0.,0.],\
+    world_to_cam = rot_psi(-21.6*math.pi/180.)@np.array([[1.,0.,0.,0.],\
                              [0.,1.,0.,0.],\
-                             [0.,0.,1.,15.],\
+                             [0.,0.,1.,8.1],\
                              [0.,0.,0.,1.]])
     cx = W/2 - (x+w/2)
     cy = (y+h/2) - H/2
-    print(cx,cy,x,y,H,W)
     D = (W/2)/(math.tan(camera_angle/2))
-    caml_to_cam = rot_theta(math.atan(cx/D))@rot_psi(math.atan(cy/D))@\
+    # print("Dip : ", math.atan(cy/D)*180./math.pi,cx)
+    obj_to_caml = rot_theta(math.pi) @ np.linalg.inv(opt_pose)
+    obj_dist = np.linalg.norm(obj_to_caml[:3,-1])
+
+    caml_to_cam = rot_theta(math.atan(-cx/D))@rot_psi(math.atan(cy/D))@\
                    np.array([[1.,0.,0.,0.],\
                              [0.,1.,0.,0.],\
-                             [0.,0.,1.,dist-2],\
-                             [0.,0.,0.,1.]]) @ rot_psi(math.pi)
-    object_to_world = np.linalg.inv(world_to_cam) @ caml_to_cam @ np.linalg.inv(opt_pose)
+                             [0.,0.,1.,dist-obj_dist],\
+                             [0.,0.,0.,1.]])
+    
+    object_to_world = np.linalg.inv(world_to_cam) @ caml_to_cam @ obj_to_caml
     print("Object -> world transformation : ",object_to_world)
     # x,y,z,r,p,yaw = opt_pose
     # obj_angle = np.array([r,p,yaw])
-    return object_to_world
+    return object_to_world, obj_dist
 
-def getObjectRelPose(object_pose,world_to_camera,camera_angle,W,H) :
+def getObjectRelPose(object_pose,world_to_camera,camera_angle,obj_dist,W,H) :
     """
     Inputs :-
         object_pose : object -> world transformation
         world_to_camera : world -> camera transformation
         camera_angle : Field of view of the camera
+        obj_dist : Object distance from camera
         W : Width of the scene image
         H : Height of the scene image
     Returns :-
@@ -257,15 +283,15 @@ def getObjectRelPose(object_pose,world_to_camera,camera_angle,W,H) :
     """
     object_to_camera = world_to_camera @ object_pose
     dist = np.linalg.norm(object_to_camera[:3,3])
-    object_to_camlocal = rot_psi(math.pi) @ np.array([[1.,0.,0.,0.],\
+    object_to_camlocal = rot_theta(math.pi) @ np.array([[1.,0.,0.,0.],\
                              [0.,1.,0.,0.],\
-                             [0.,0.,1.,-dist+2],\
+                             [0.,0.,1.,-dist+obj_dist],\
                              [0.,0.,0.,1.]])@rot_psi(math.asin(object_to_camera[1,3]/dist))@rot_theta(math.asin(object_to_camera[0,3]/dist))@object_to_camera
-    print(object_to_camera)
+    # print(rot_psi(math.asin(object_to_camera[1,3]/dist))@rot_theta(math.asin(object_to_camera[0,3]/dist))@object_to_camera)
     D = (W/2)/(math.tan(camera_angle/2))
-    print(math.asin(object_to_camera[0,3]/dist),camera_angle/2,W)
-    print(math.asin(object_to_camera[1,3]/dist),camera_angle/2,H)
-    y = int(W/2 + D*math.tan(math.asin(object_to_camera[0,3]/dist)))
+    # print(math.asin(object_to_camera[0,3]/dist),camera_angle/2,W)
+    # print(math.asin(object_to_camera[1,3]/dist),camera_angle/2,H)
+    y = int(W/2 - D*math.tan(math.asin(object_to_camera[0,3]/dist)))
     x = int(H/2 - D*math.tan(math.asin(object_to_camera[1,3]/dist)))
     return np.linalg.inv(object_to_camlocal), x, y
 
