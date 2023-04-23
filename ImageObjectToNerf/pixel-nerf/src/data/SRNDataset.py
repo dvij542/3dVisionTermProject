@@ -6,6 +6,7 @@ import imageio
 import numpy as np
 from util import get_image_to_tensor_balanced, get_mask_to_tensor
 import cv2
+from scipy.spatial.transform import Rotation as R
 
 class SRNDataset(torch.utils.data.Dataset):
     """
@@ -78,15 +79,33 @@ class SRNDataset(torch.utils.data.Dataset):
         all_bboxes = []
         # img = imageio.imread('/home/praveen/l3d/project/pixel-nerf/car.png')[..., :3]
         for rgb_path, pose_path in zip(rgb_paths, pose_paths):
+            # scipy.spatial.transform.Rotation
             img = imageio.imread(rgb_path)[..., :3]
             img = cv2.resize(img, (128, 128))
             img_tensor = self.image_to_tensor(img)
             mask = (img != 255).all(axis=-1)[..., None].astype(np.uint8) * 255
             mask_tensor = self.mask_to_tensor(mask)
 
-            pose = torch.from_numpy(
-                np.loadtxt(pose_path, dtype=np.float32).reshape(4, 4)
-            )
+            # pose = torch.from_numpy(
+            #     np.loadtxt(pose_path, dtype=np.float32).reshape(4, 4)
+            # )
+            # pose = torch.from_numpy(
+                
+            # )
+            pose = np.loadtxt(pose_path, delimiter = ',', dtype=np.float32)
+            print(pose.shape)
+
+
+            rot = R.from_euler('xyz', pose[3:], degrees=True)
+            mat = rot.as_matrix() 
+            translation = pose[:3].reshape(3, 1)
+
+            print(translation.shape, mat.shape)
+
+            pose = np.hstack((mat, translation))
+            pose = np.vstack((pose, np.array([0, 0, 0, 1])))
+            pose = torch.from_numpy(pose).float()
+
             pose = pose @ self._coord_trans
 
             rows = np.any(mask, axis=1)

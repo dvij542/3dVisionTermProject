@@ -213,9 +213,9 @@ vid_path = os.path.join(args.visual_path, args.name, "video" + vid_name + ".mp4"
 viewimg_path = os.path.join(
     args.visual_path, args.name, "video" + vid_name + "_view.jpg"
 )
-imageio.mimwrite(
-    vid_path, (frames.cpu().numpy() * 255).astype(np.uint8), fps=args.fps, quality=8
-)
+# imageio.mimwrite(
+#     vid_path, (frames.cpu().numpy() * 255).astype(np.uint8), fps=args.fps, quality=8
+# )
 
 img_np = (data["images"][src_view].permute(0, 2, 3, 1) * 0.5 + 0.5).numpy()
 img_np = (img_np * 255).astype(np.uint8)
