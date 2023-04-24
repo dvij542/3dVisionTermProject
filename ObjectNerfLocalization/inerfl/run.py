@@ -34,6 +34,8 @@ def get_triple_sized(img) :
             
     return img_new
 
+
+
 def run():
 
     # Parameters
@@ -65,7 +67,9 @@ def run():
         near, far = 1., 3.  # Blender
     elif dataset_type == 'car':
         obs_img_, hwf, start_poses, obs_img_poses, bbox, camera_angle, H_, W_ = load_car(args.data_dir, model_name, obs_img_num,
-                                                args.half_res, args.white_bkgd, (delta_phi, delta_theta, delta_psi, delta_t))
+                                                args.half_res, args.white_bkgd, (delta_phi, delta_theta, delta_psi, delta_t),
+                                                scene_dir='../../data/scenes/scene1_without_shadows.png', 
+                                                bboxes_file='../../data/bboxes/1.txt',)
         H, W, focal = hwf
         near, far = .5, 3.5  # Blender
     else:

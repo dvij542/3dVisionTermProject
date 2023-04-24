@@ -86,25 +86,25 @@ class SRNDataset(torch.utils.data.Dataset):
             mask = (img != 255).all(axis=-1)[..., None].astype(np.uint8) * 255
             mask_tensor = self.mask_to_tensor(mask)
 
-            # pose = torch.from_numpy(
-            #     np.loadtxt(pose_path, dtype=np.float32).reshape(4, 4)
-            # )
+            pose = torch.from_numpy(
+                np.loadtxt(pose_path, dtype=np.float32).reshape(4, 4)
+            )
             # pose = torch.from_numpy(
                 
             # )
-            pose = np.loadtxt(pose_path, delimiter = ',', dtype=np.float32)
-            print(pose.shape)
+            # pose = np.loadtxt(pose_path, delimiter = ',', dtype=np.float32)
+            # print(pose.shape)
 
 
-            rot = R.from_euler('xyz', pose[3:], degrees=True)
-            mat = rot.as_matrix() 
-            translation = pose[:3].reshape(3, 1)
+            # rot = R.from_euler('xyz', pose[3:], degrees=True)
+            # mat = rot.as_matrix() 
+            # translation = pose[:3].reshape(3, 1)
 
-            print(translation.shape, mat.shape)
+            # print(translation.shape, mat.shape)
 
-            pose = np.hstack((mat, translation))
-            pose = np.vstack((pose, np.array([0, 0, 0, 1])))
-            pose = torch.from_numpy(pose).float()
+            # pose = np.hstack((mat, translation))
+            # pose = np.vstack((pose, np.array([0, 0, 0, 1])))
+            # pose = torch.from_numpy(pose).float()
 
             pose = pose @ self._coord_trans
 
