@@ -20,7 +20,7 @@ def extra_args(parser):
         "--input",
         "-I",
         type=str,
-        default=os.path.join(ROOT_DIR, "input"),
+        default=os.path.join(ROOT_DIR, "my_input/rgb"),
         help="Image directory",
     )
     parser.add_argument(
@@ -54,10 +54,10 @@ def extra_args(parser):
     parser.add_argument(
         "--num_views",
         type=int,
-        default=24,
+        default=5,
         help="Number of video frames (rotated views)",
     )
-    parser.add_argument("--fps", type=int, default=15, help="FPS of video")
+    parser.add_argument("--fps", type=int, default=2, help="FPS of video")
     parser.add_argument("--gif", action="store_true", help="Store gif instead of mp4")
     parser.add_argument(
         "--no_vid",
@@ -107,9 +107,16 @@ render_rays = util.gen_rays(render_poses, W, H, focal, z_near, z_far).to(device=
 
 
 inputs_all = os.listdir(args.input)
+print(inputs_all)
 inputs = [
-    os.path.join(args.input, x) for x in inputs_all if x.endswith("_normalize.png")
+    os.path.join(args.input, x) for x in inputs_all
 ]
+poses = [
+    os.path.join(os.path.join(args.input, "../pose/"), x.split('.')[0] + '.npy') for x in inputs_all
+]
+inputs = sorted(inputs, reverse = True)
+poses = sorted(poses, reverse = True)
+print(poses)
 os.makedirs(args.output, exist_ok=True)
 
 if len(inputs) == 0:
@@ -121,18 +128,17 @@ if len(inputs) == 0:
 
     sys.exit(1)
 
-# cam_pose = torch.eye(4, )
-# cam_pose = torch.tensor(
-#     [
-#         [1.0, 0.0, 0.0, 0.0],
-#         [0.0, 1.0, 0.0, 0.0],
-#         [0.0, 0.0, 1.0, 0.0],
-#         [0.0, 0.0, 0.0, 1.0],
-#     ],
-#     device=device
-# )
+cam_pose = torch.eye(4, )
+cam_pose = torch.tensor(
+    [
+        [1.0, 0.0, 0.0, 0.0],
+        [0.0, 1.0, 0.0, 0.0],
+        [0.0, 0.0, 1.0, 0.0],
+        [0.0, 0.0, 0.0, 1.0],
+    ],
+    device=device
+)
 
-from scipy.spatial.transform import Rotation as R
 
 
 # rpy = np.array([0, 0, 0])
@@ -145,41 +151,24 @@ from scipy.spatial.transform import Rotation as R
 # pose = np.hstack((mat, translation))
 # pose = np.vstack((pose, np.array([0, 0, 0, 1])))
 # cam_pose = torch.from_numpy(pose).float().to(device)
+# cam_pose = torch.from_numpy(np.load('cam_pose.npy')).float().to(device)
 
-cam_pose  = torch.from_numpy(np.array([[
-    -0.996160089969635,
-    -0.06979195773601532,
-    0.052859436720609665,
-    0.10571888089179993
-],
-[
-    0.08755019307136536,
-    -0.7941039800643921,
-    0.6014430522918701,
-    1.2028862237930298
-],
-[
-    0.0,
-    0.6037613749504089,
-    0.7971649765968323,
-    1.594330072402954
-],
-[
-    0.0,
-    0.0,
-    0.0,
-    1.0
-]])).to(device).float()
-
-# cam_pose[2, -1] = args.radius
-print("SET DUMMY CAMERA")
-print(cam_pose)
-print(R.from_matrix(cam_pose.cpu().numpy()[:3, :3]).as_euler('xyz', degrees=True))
+cam_pose[2, -1] = args.radius
+# print("SET DUMMY CAMERA")
+# print(cam_pose)
+# print(R.from_matrix(cam_pose.cpu().numpy()[:3, :3]).as_euler('xyz', degrees=True))
 
 image_to_tensor = util.get_image_to_tensor_balanced()
 
 with torch.no_grad():
-    for i, image_path in enumerate(inputs):
+    for i, data in enumerate(zip(inputs, poses)):
+        image_path = data[0]
+        pose_path = data[1]
+
+        # cam_pose = np.load(pose_path)
+        # cam_pose = torch.from_numpy(cam_pose).float().to(device)
+        cam_pose[2, -1] = args.radius
+        print(cam_pose)
         print("IMAGE", i + 1, "of", len(inputs), "@", image_path)
         image = Image.open(image_path).convert("RGB")
         image = T.Resize(in_sz)(image)
@@ -201,8 +190,8 @@ with torch.no_grad():
 
         im_name = os.path.basename(os.path.splitext(image_path)[0])
 
-        frames_dir_name = os.path.join(args.output, im_name + "_frames")
-        os.makedirs(frames_dir_name, exist_ok=True)
+        # frames_dir_name = os.path.join(args.output, im_name + "_frames")
+        # os.makedirs(frames_dir_name, exist_ok=True)
 
         # for i in range(args.num_views):
         #     frm_path = os.path.join(frames_dir_name, "{:04}.png".format(i))
