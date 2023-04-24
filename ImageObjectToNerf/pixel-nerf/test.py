@@ -34,7 +34,7 @@ def extra_args(parser):
     parser.add_argument(
         "--out_size",
         type=str,
-        default="128",
+        default="1024",
         help="Output image size, either 1 or 2 number (w h)",
     )
 
@@ -103,6 +103,10 @@ render_poses = torch.stack(
     0,
 )  # (NV, 4, 4)
 
+
+
+
+
 render_rays = util.gen_rays(render_poses, W, H, focal, z_near, z_far).to(device=device)
 
 
@@ -140,6 +144,9 @@ cam_pose = torch.tensor(
 )
 
 
+from scipy.spatial.transform import Rotation as R
+
+
 
 # rpy = np.array([0, 0, 0])
 # translation = np.array([0, 0, 0]).reshape(3, 1)
@@ -153,7 +160,7 @@ cam_pose = torch.tensor(
 # cam_pose = torch.from_numpy(pose).float().to(device)
 # cam_pose = torch.from_numpy(np.load('cam_pose.npy')).float().to(device)
 
-cam_pose[2, -1] = args.radius
+# cam_pose[2, -1] = args.radius
 # print("SET DUMMY CAMERA")
 # print(cam_pose)
 # print(R.from_matrix(cam_pose.cpu().numpy()[:3, :3]).as_euler('xyz', degrees=True))
@@ -164,10 +171,14 @@ with torch.no_grad():
     for i, data in enumerate(zip(inputs, poses)):
         image_path = data[0]
         pose_path = data[1]
+        if "scene1" not in data[0]:
+            continue
 
         # cam_pose = np.load(pose_path)
-        # cam_pose = torch.from_numpy(cam_pose).float().to(device)
+        # print(_coord_from_blender.shape, cam_pose.shape)
+        # cam_pose = _coord_from_blender.numpy() @ cam_pose
         cam_pose[2, -1] = args.radius
+        # cam_pose = torch.from_numpy(cam_pose).float().to(device)
         print(cam_pose)
         print("IMAGE", i + 1, "of", len(inputs), "@", image_path)
         image = Image.open(image_path).convert("RGB")
@@ -190,12 +201,12 @@ with torch.no_grad():
 
         im_name = os.path.basename(os.path.splitext(image_path)[0])
 
-        # frames_dir_name = os.path.join(args.output, im_name + "_frames")
-        # os.makedirs(frames_dir_name, exist_ok=True)
+        frames_dir_name = os.path.join(args.output, im_name + "_frames")
+        os.makedirs(frames_dir_name, exist_ok=True)
 
-        # for i in range(args.num_views):
-        #     frm_path = os.path.join(frames_dir_name, "{:04}.png".format(i))
-        #     imageio.imwrite(frm_path, frames[i])
+        for i in range(args.num_views):
+            frm_path = os.path.join(frames_dir_name, "{:04}.png".format(i))
+            imageio.imwrite(frm_path, frames[i])
         vid_path = os.path.join(args.output, im_name + "_vid.gif")
         imageio.mimwrite(vid_path, frames, fps=args.fps)
         print("Wrote to", vid_path)
