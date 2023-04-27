@@ -13,6 +13,8 @@ import torchvision.transforms as T
 import tqdm
 import imageio
 from PIL import Image
+import math
+
 
 
 def extra_args(parser):
@@ -34,7 +36,7 @@ def extra_args(parser):
     parser.add_argument(
         "--out_size",
         type=str,
-        default="1024",
+        default="128",
         help="Output image size, either 1 or 2 number (w h)",
     )
 
@@ -104,7 +106,7 @@ render_poses = torch.stack(
 )  # (NV, 4, 4)
 
 
-
+print(render_poses)
 
 
 render_rays = util.gen_rays(render_poses, W, H, focal, z_near, z_far).to(device=device)
@@ -133,20 +135,53 @@ if len(inputs) == 0:
     sys.exit(1)
 
 cam_pose = torch.eye(4, )
-cam_pose = torch.tensor(
-    [
-        [1.0, 0.0, 0.0, 0.0],
-        [0.0, 1.0, 0.0, 0.0],
-        [0.0, 0.0, 1.0, 0.0],
-        [0.0, 0.0, 0.0, 1.0],
-    ],
-    device=device
-)
+
+rot_psi = lambda phi: np.array([
+        [1, 0, 0, 0],
+        [0, np.cos(phi), -np.sin(phi), 0],
+        [0, np.sin(phi), np.cos(phi), 0],
+        [0, 0, 0, 1]])
+
+rot_theta = lambda th: np.array([
+        [np.cos(th), 0, -np.sin(th), 0],
+        [0, 1, 0, 0],
+        [np.sin(th), 0, np.cos(th), 0],
+        [0, 0, 0, 1]])
+
+rot_phi = lambda psi: np.array([
+        [np.cos(psi), -np.sin(psi), 0, 0],
+        [np.sin(psi), np.cos(psi), 0, 0],
+        [0, 0, 1, 0],
+        [0, 0, 0, 1]])
+
+trans_t = lambda t: np.array([
+        [1, 0, 0, 0],
+        [0, 1, 0, 0],
+        [0, 0, 1, t],
+        [0, 0, 0, 1]])
+
+
+world_to_camera = rot_theta(30 * np.pi/180) *rot_psi(0.*math.pi/180.) @ np.array([[1.,0.,0.,0.],\
+                             [0.,1.,0.,0.],\
+                             [0.,0.,1.,1.3],\
+                             [0.,0.,0.,1.]])
+# cam_pose = torch.tensor(
+#     [
+#         [1.0, 0.0, 0.0, 0.0],
+#         [0.0, 1.0, 0.0, 0.0],
+#         [0.0, 0.0, 1.0, 0.0],
+#         [0.0, 0.0, 0.0, 1.0],
+#     ],
+#     device=device
+# )
+
+cam_pose = torch.from_numpy(world_to_camera).float().to(device)
+# cam_pose = torch.linalg.inv(torch.from_numpy(world_to_camera)).float().to(device)
 
 
 from scipy.spatial.transform import Rotation as R
 
-
+# cam_pose[2, -1] = args.radius
 
 # rpy = np.array([0, 0, 0])
 # translation = np.array([0, 0, 0]).reshape(3, 1)
@@ -171,13 +206,16 @@ with torch.no_grad():
     for i, data in enumerate(zip(inputs, poses)):
         image_path = data[0]
         pose_path = data[1]
-        if "scene1" not in data[0]:
+        if "car4" not in data[0] :
             continue
+        # if "car7" not in data[0] :
+        #     continue
+        # if "car6" not in data[0]:
+        #     continue
 
         # cam_pose = np.load(pose_path)
         # print(_coord_from_blender.shape, cam_pose.shape)
         # cam_pose = _coord_from_blender.numpy() @ cam_pose
-        cam_pose[2, -1] = args.radius
         # cam_pose = torch.from_numpy(cam_pose).float().to(device)
         print(cam_pose)
         print("IMAGE", i + 1, "of", len(inputs), "@", image_path)
